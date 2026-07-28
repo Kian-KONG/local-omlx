@@ -41,6 +41,7 @@ usage() {
   mini16 / both  4B + 9B（约 12GB 盘，适合 16GB）
   pro36          4B + 9B + 35B-A3B（约 33GB 盘，适合 36GB+）
   4b | 9b | 35b  只下对应模型
+  Ctrl+C          优雅暂停（保留断点，再次运行同一命令即可续传）
 
 环境变量: OMLX_MODEL_DIR HF_ENDPOINT PIP_INDEX_URL
 默认目录: ~/.omlx/models（与 oMLX DMG 一致）
@@ -171,10 +172,12 @@ download_hf_mirror() {
 
   pip_install -U "huggingface_hub[cli]"
 
+  clear_stale_locks "$target"
+
   if command -v hf >/dev/null 2>&1; then
-    hf download "$repo_id" --local-dir "$target"
+    run_download "$target" hf download "$repo_id" --local-dir "$target"
   else
-    huggingface-cli download \
+    run_download "$target" huggingface-cli download \
       --resume-download \
       "$repo_id" \
       --local-dir "$target" \
@@ -203,7 +206,8 @@ download_modelscope() {
   echo "从 ModelScope 下载 $repo_id → $target ..."
   pip_install -U modelscope
 
-  if ! modelscope download --model "$repo_id" --local_dir "$target"; then
+  clear_stale_locks "$target"
+  if ! run_download "$target" modelscope download --model "$repo_id" --local_dir "$target"; then
     echo "" >&2
     echo "ModelScope 下载失败。请改用: $0 hf-mirror $WHICH" >&2
     exit 1
