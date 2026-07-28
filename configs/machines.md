@@ -1,8 +1,12 @@
 # 机型配置速查
 
-本仓库只放脚本与文档；模型由每台机器自己下载到 `~/.omlx/models`。
+本仓库只放脚本与文档；模型由每台机器自己下载。
 
-## Mac Mini M4 16GB
+## Mac（Apple Silicon → oMLX）
+
+权重目录：`~/.omlx/models`
+
+### Mac Mini M4 16GB
 
 ```bash
 ./scripts/download-models.sh hf-mirror mini16
@@ -13,23 +17,32 @@
 | CoPaw / Codex | `Qwen3.5-4B-OptiQ-4bit` |
 | 空机调 API | `Qwen3.5-9B-OptiQ-4bit` |
 
-不要同时 pin 两个 LLM。不跑 35B。
-
-## M3 Pro 36GB
+### M3 Pro 36GB
 
 ```bash
 ./scripts/download-models.sh hf-mirror pro36
-# 或只补 35B：
-./scripts/download-models.sh hf-mirror 35b
+./scripts/download-models.sh hf-mirror 35b   # 只补 35B
 ```
 
 | 场景 | 模型 |
 |------|------|
-| 空机推理 / 重活 | `Qwen3.5-35B-A3B-OptiQ-4bit`（~20–26GB） |
-| CoPaw / Codex / 多 App | `Qwen3.5-9B-OptiQ-4bit` 或 `4B` |
+| 空机重活 | `Qwen3.5-35B-A3B-OptiQ-4bit` |
+| CoPaw / Codex | `9B` 或 `4B` |
 
-36GB 跑 35B-A3B **可以**，但和 CoPaw 叠开容易紧，建议卸掉 35B 再开 agent。
+API: `http://127.0.0.1:8000/v1`
 
-## 4070 8G PC（参考）
+## Windows RTX 4070 8GB（→ Ollama，不用 oMLX）
 
-不用 oMLX（仅 Apple Silicon）。改用 Ollama / llama.cpp + GGUF，仍可把 Base URL 指给 CoPaw/Codex。详见团队另行文档。
+```powershell
+cd scripts\windows
+.\install-ollama.ps1
+.\download-models.ps1    # qwen3.5:9b
+.\status.ps1
+```
+
+| 场景 | 模型 |
+|------|------|
+| 日常 / CoPaw / Codex | `qwen3.5:9b`（Q4） |
+
+API: `http://127.0.0.1:11434/v1`  
+详见 [windows-4070.md](windows-4070.md) / [scripts/windows/README.md](../scripts/windows/README.md)
