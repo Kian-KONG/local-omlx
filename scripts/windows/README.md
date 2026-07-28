@@ -10,40 +10,45 @@ CoPaw / Codex  →  http://127.0.0.1:11434/v1  →  Ollama  →  qwen3.5:9b (Q4)
 
 - GPU: RTX 4070 **8GB**
 - 内存: 32GB
-- 模型: **Qwen3.5-9B**（Ollama 默认约 Q4，盘约 6–7GB；显存约 7–8GB+KV，ctx 建议先 8k）
+- 模型: **Qwen3.5-9B** Q4_K_M（约 6–7GB；ctx 建议先 8k）
 
-8GB 显存跑 9B-Q4 **可以**，但别和大型游戏/Stable Diffusion 抢显存；ctx 开太大易 OOM。
-
-## 一键流程（PowerShell）
+## 推荐流程（国内源下 GGUF → 导入 Ollama，不走 pull）
 
 ```powershell
 cd local-omlx\scripts\windows
-
-# 1) 安装 Ollama（若未装）
 .\install-ollama.ps1
-
-# 2) 拉取 9B
-.\download-models.ps1
-
-# 3) 确认服务与模型
+.\download-models.ps1          # hf-mirror 下 GGUF + ollama create
 .\status.ps1
-
-# 冒烟
-curl.exe http://127.0.0.1:11434/v1/models
 ```
 
-Ollama 安装后一般会自动在后台跑 API。`start.ps1` / `stop.ps1` 用于启停服务。
+原理：
+
+1. 从 `hf-mirror` 下载 `Qwen3.5-9B-Q4_K_M.gguf` → `%USERPROFILE%\models\gguf`
+2. `ollama create qwen3.5:9b -f Modelfile`（`FROM` 指向本地 GGUF）
+3. Ollama **自己**把 blob 写进 `%USERPROFILE%\.ollama\models`
+
+**不要**手动把 GGUF 复制进 `.ollama\models`，格式对不上。
+
+若代理很好、想直接官方拉：
+
+```powershell
+.\download-models.ps1 -Pull
+```
 
 ## 客户端
 
 | 项 | 值 |
 |----|-----|
 | Base URL | `http://127.0.0.1:11434/v1` |
-| API Key | `ollama`（任意非空即可） |
+| API Key | `ollama` |
 | Model | `qwen3.5:9b` |
 
-与 Mac 上 oMLX 的 `:8000` **端口不同**，别混用。
+与 Mac oMLX 的 `:8000` 不同，别混用。
 
-## 可选：手动 GGUF（不用 Ollama 拉）
+## 其它脚本
 
-见 `download-gguf.ps1`（hf-mirror → `%USERPROFILE%\models\gguf`），再用 LM Studio / llama-server 加载。日常推荐 Ollama。
+| 脚本 | 作用 |
+|------|------|
+| `start.ps1` / `stop.ps1` | 启停 Ollama |
+| `status.ps1` | 检查 API / 模型列表 |
+| `download-gguf.ps1` | 只下 GGUF、不导入 Ollama（给 LM Studio 等） |

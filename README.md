@@ -36,7 +36,7 @@ API: `http://127.0.0.1:8000/v1`（Key 与 oMLX Admin 一致）
 git clone git@github.com:Kian-KONG/local-omlx.git
 cd local-omlx\scripts\windows
 .\install-ollama.ps1
-.\download-models.ps1
+.\download-models.ps1    # 国内 hf-mirror 下 GGUF，再 ollama create（不 pull）
 .\status.ps1
 ```
 

@@ -34,15 +34,16 @@ API: `http://127.0.0.1:8000/v1`
 ## Windows RTX 4070 8GB（→ Ollama，不用 oMLX）
 
 ```powershell
-cd scripts\windows
+cd local-omlx\scripts\windows
 .\install-ollama.ps1
-.\download-models.ps1    # qwen3.5:9b
+.\download-models.ps1    # hf-mirror 下 GGUF → ollama create（不走 pull）
 .\status.ps1
 ```
 
 | 场景 | 模型 |
 |------|------|
-| 日常 / CoPaw / Codex | `qwen3.5:9b`（Q4） |
+| 日常 / CoPaw / Codex | `qwen3.5:9b`（本地 Q4 GGUF 导入） |
 
 API: `http://127.0.0.1:11434/v1`  
+国内源：默认走 hf-mirror；需要官方库时用 `.\download-models.ps1 -Pull`。  
 详见 [windows-4070.md](windows-4070.md) / [scripts/windows/README.md](../scripts/windows/README.md)
