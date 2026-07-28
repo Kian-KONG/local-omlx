@@ -79,7 +79,28 @@ is_downloaded() {
   local dir="$1"
   [[ -d "$dir" ]] || return 1
   [[ -f "$dir/config.json" ]] || return 1
-  compgen -G "$dir/*.safetensors" >/dev/null 2>&1 || compgen -G "$dir/model*.safetensors" >/dev/null 2>&1
+
+  local index="$dir/model.safetensors.index.json"
+  if [[ -f "$index" ]]; then
+    # All shards listed in weight_map must exist under $dir
+    python3 - "$dir" "$index" <<'PY'
+import json, os, sys
+root, index_path = sys.argv[1], sys.argv[2]
+with open(index_path) as f:
+    idx = json.load(f)
+shards = set(idx.get("weight_map", {}).values())
+if not shards:
+    sys.exit(1)
+for s in shards:
+    if not os.path.isfile(os.path.join(root, s)):
+        sys.exit(1)
+sys.exit(0)
+PY
+    return $?
+  fi
+
+  compgen -G "$dir/*.safetensors" >/dev/null 2>&1 \
+    || compgen -G "$dir/model*.safetensors" >/dev/null 2>&1
 }
 
 download_hf_mirror() {
