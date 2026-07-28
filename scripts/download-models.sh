@@ -41,6 +41,7 @@ usage() {
   mini16 / both  4B + 9B（约 12GB 盘，适合 16GB）
   pro36          4B + 9B + 35B-A3B（约 33GB 盘，适合 36GB+）
   4b | 9b | 35b  只下对应模型
+  Ctrl+C          优雅暂停（保留断点，再次运行同一命令即可续传）
 
 环境变量: OMLX_MODEL_DIR HF_ENDPOINT PIP_INDEX_URL
 默认目录: ~/.omlx/models（与 oMLX DMG 一致）
@@ -75,11 +76,82 @@ repo_basename() {
   echo "${id##*/}"
 }
 
+DOWNLOAD_PID=""
+DOWNLOAD_TARGET=""
+
+clear_stale_locks() {
+  local dir="$1"
+  [[ -d "$dir/.cache" ]] || return 0
+  find "$dir/.cache" -name '*.lock' -type f -delete 2>/dev/null || true
+}
+
+graceful_pause() {
+  echo ""
+  echo "[pause] 正在优雅暂停下载..."
+  if [[ -n "${DOWNLOAD_PID:-}" ]] && kill -0 "$DOWNLOAD_PID" 2>/dev/null; then
+    kill -TERM "$DOWNLOAD_PID" 2>/dev/null || true
+    local i
+    for i in $(seq 1 30); do
+      kill -0 "$DOWNLOAD_PID" 2>/dev/null || break
+      sleep 0.5
+    done
+    if kill -0 "$DOWNLOAD_PID" 2>/dev/null; then
+      echo "[pause] 仍未退出，发送 SIGKILL..."
+      kill -KILL "$DOWNLOAD_PID" 2>/dev/null || true
+    fi
+    wait "$DOWNLOAD_PID" 2>/dev/null || true
+  fi
+  if [[ -n "${DOWNLOAD_TARGET:-}" ]]; then
+    clear_stale_locks "$DOWNLOAD_TARGET"
+    echo "[pause] 已暂停。进度约 $(du -sh "$DOWNLOAD_TARGET" 2>/dev/null | awk '{print $1}')"
+  else
+    echo "[pause] 已暂停。"
+  fi
+  echo "[pause] 恢复: 重新运行同一命令即可续传"
+  exit 130
+}
+
+run_download() {
+  local target="$1"
+  shift
+  DOWNLOAD_TARGET="$target"
+  clear_stale_locks "$target"
+  trap graceful_pause INT TERM
+  "$@" &
+  DOWNLOAD_PID=$!
+  local ec=0
+  wait "$DOWNLOAD_PID" || ec=$?
+  trap - INT TERM
+  DOWNLOAD_PID=""
+  return "$ec"
+}
+
 is_downloaded() {
   local dir="$1"
   [[ -d "$dir" ]] || return 1
   [[ -f "$dir/config.json" ]] || return 1
-  compgen -G "$dir/*.safetensors" >/dev/null 2>&1 || compgen -G "$dir/model*.safetensors" >/dev/null 2>&1
+
+  local index="$dir/model.safetensors.index.json"
+  if [[ -f "$index" ]]; then
+    # All shards listed in weight_map must exist under $dir
+    python3 - "$dir" "$index" <<'PY'
+import json, os, sys
+root, index_path = sys.argv[1], sys.argv[2]
+with open(index_path) as f:
+    idx = json.load(f)
+shards = set(idx.get("weight_map", {}).values())
+if not shards:
+    sys.exit(1)
+for s in shards:
+    if not os.path.isfile(os.path.join(root, s)):
+        sys.exit(1)
+sys.exit(0)
+PY
+    return $?
+  fi
+
+  compgen -G "$dir/*.safetensors" >/dev/null 2>&1 \
+    || compgen -G "$dir/model*.safetensors" >/dev/null 2>&1
 }
 
 download_hf_mirror() {
@@ -100,10 +172,12 @@ download_hf_mirror() {
 
   pip_install -U "huggingface_hub[cli]"
 
+  clear_stale_locks "$target"
+
   if command -v hf >/dev/null 2>&1; then
-    hf download "$repo_id" --local-dir "$target"
+    run_download "$target" hf download "$repo_id" --local-dir "$target"
   else
-    huggingface-cli download \
+    run_download "$target" huggingface-cli download \
       --resume-download \
       "$repo_id" \
       --local-dir "$target" \
@@ -132,7 +206,8 @@ download_modelscope() {
   echo "从 ModelScope 下载 $repo_id → $target ..."
   pip_install -U modelscope
 
-  if ! modelscope download --model "$repo_id" --local_dir "$target"; then
+  clear_stale_locks "$target"
+  if ! run_download "$target" modelscope download --model "$repo_id" --local_dir "$target"; then
     echo "" >&2
     echo "ModelScope 下载失败。请改用: $0 hf-mirror $WHICH" >&2
     exit 1

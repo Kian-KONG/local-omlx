@@ -2,3 +2,4 @@
 .venv-download/
 *.log
 .DS_Store
+.worktrees/
