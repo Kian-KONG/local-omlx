@@ -1,0 +1,4 @@
+.env
+.venv-download/
+*.log
+.DS_Store
