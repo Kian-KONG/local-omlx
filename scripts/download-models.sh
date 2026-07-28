@@ -75,6 +75,56 @@ repo_basename() {
   echo "${id##*/}"
 }
 
+DOWNLOAD_PID=""
+DOWNLOAD_TARGET=""
+
+clear_stale_locks() {
+  local dir="$1"
+  [[ -d "$dir/.cache" ]] || return 0
+  find "$dir/.cache" -name '*.lock' -type f -delete 2>/dev/null || true
+}
+
+graceful_pause() {
+  echo ""
+  echo "[pause] 正在优雅暂停下载..."
+  if [[ -n "${DOWNLOAD_PID:-}" ]] && kill -0 "$DOWNLOAD_PID" 2>/dev/null; then
+    kill -TERM "$DOWNLOAD_PID" 2>/dev/null || true
+    local i
+    for i in $(seq 1 30); do
+      kill -0 "$DOWNLOAD_PID" 2>/dev/null || break
+      sleep 0.5
+    done
+    if kill -0 "$DOWNLOAD_PID" 2>/dev/null; then
+      echo "[pause] 仍未退出，发送 SIGKILL..."
+      kill -KILL "$DOWNLOAD_PID" 2>/dev/null || true
+    fi
+    wait "$DOWNLOAD_PID" 2>/dev/null || true
+  fi
+  if [[ -n "${DOWNLOAD_TARGET:-}" ]]; then
+    clear_stale_locks "$DOWNLOAD_TARGET"
+    echo "[pause] 已暂停。进度约 $(du -sh "$DOWNLOAD_TARGET" 2>/dev/null | awk '{print $1}')"
+  else
+    echo "[pause] 已暂停。"
+  fi
+  echo "[pause] 恢复: 重新运行同一命令即可续传"
+  exit 130
+}
+
+run_download() {
+  local target="$1"
+  shift
+  DOWNLOAD_TARGET="$target"
+  clear_stale_locks "$target"
+  trap graceful_pause INT TERM
+  "$@" &
+  DOWNLOAD_PID=$!
+  local ec=0
+  wait "$DOWNLOAD_PID" || ec=$?
+  trap - INT TERM
+  DOWNLOAD_PID=""
+  return "$ec"
+}
+
 is_downloaded() {
   local dir="$1"
   [[ -d "$dir" ]] || return 1
