@@ -7,6 +7,16 @@ OpenCode 作为客户端，oMLX 作为本地 OpenAI 兼容后端；联网搜索�
 ```bash
 cd /path/to/local-omlx
 cp -n .env.example .env   # 如尚未有 .env
+
+# 推荐：模型 + OpenCode 全流程
+./scripts/bootstrap.sh
+./scripts/bootstrap.sh --check
+
+# OpenCode 二进制下载若需翻墙（可选，不设则直连）:
+./scripts/bootstrap.sh --proxy http://127.0.0.1:7890
+# 或在 .env: OPENCODE_PROXY=http://127.0.0.1:7890
+
+# 仅配置 OpenCode（缺则自动装）
 ./scripts/setup-opencode.sh
 ./scripts/setup-opencode.sh --check
 ```
@@ -19,6 +29,17 @@ cp -n .env.example .env   # 如尚未有 .env
 4. `agent/local.md`（本地模型 agent，工具全开）
 
 模板源目录：[opencode/](opencode/) · JSON 示例：[opencode.json.example](opencode.json.example)
+
+### OpenCode 安装与代理
+
+| 命令 | 说明 |
+|------|------|
+| `./scripts/install-opencode.sh` | 已装则跳过；未装则官方脚本安装 |
+| `./scripts/install-opencode.sh --check` | 只检测 |
+| `./scripts/install-opencode.sh --proxy URL` | 本次安装走代理 |
+| `OPENCODE_INSTALL=0` | 禁止自动安装 |
+
+代理也可用系统已有的 `HTTPS_PROXY` / `HTTP_PROXY` / `ALL_PROXY`。直连失败时再开代理即可，**不是必选**。
 
 ### 给某个项目单独复用
 
@@ -41,10 +62,10 @@ cp /path/to/local-omlx/configs/opencode/AGENTS.md .opencode/
 
 ## 前置
 
-- oMLX 已启动：`./scripts/start.sh`
+- oMLX 已启动：`./scripts/start.sh`（或 `./scripts/bootstrap.sh`）
 - 推荐模型：`Qwen3.5-4B-OptiQ-4bit`（流畅默认）；空机可用 9B
-- 已安装 [OpenCode](https://opencode.ai/)：`curl -fsSL https://opencode.ai/install | bash`
-- 能访问 `cn.bing.com`（国内一般无需翻墙）
+- OpenCode：脚本会检测，缺失则安装；也可手动 `./scripts/install-opencode.sh`
+- 能访问 `cn.bing.com`（搜索 MCP，国内一般无需翻墙）；**安装 OpenCode 二进制**若失败再开可选代理
 
 ## 环境变量（可选，来自 `.env`）
 
@@ -54,6 +75,8 @@ cp /path/to/local-omlx/configs/opencode/AGENTS.md .opencode/
 | `OMLX_API_KEY` | 与 Admin 一致 | Bearer |
 | `OPENCODE_MODEL` | `Qwen3.5-4B-OptiQ-4bit` | 默认模型 id（不含 `omlx/` 前缀） |
 | `NPM_REGISTRY` | `https://registry.npmmirror.com` | 国内装 MCP |
+| `OPENCODE_PROXY` | （空） | 仅安装 OpenCode 时可选代理 |
+| `OPENCODE_INSTALL` | `1` | 设 `0` 禁止自动安装 OpenCode |
 
 ## 联网搜索工具
 

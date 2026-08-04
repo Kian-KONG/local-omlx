@@ -65,5 +65,5 @@ OPENCODE_MODEL=Qwen3.5-4B-OptiQ-4bit
 5. **Qwen3.6 2bit 仅实验**：约 8k 上下文，需抬高 memory guard / 关 `prefill_memory_guard`；质量远弱于 4bit。
 6. **勿下 3.6 的 4bit（~20GB）**：16GB 跑不动。
 
-一键 OpenCode：`./scripts/setup-opencode.sh`（详见 [opencode.md](opencode.md)）
+一键 OpenCode：`./scripts/bootstrap.sh` 或 `./scripts/setup-opencode.sh`（详见 [opencode.md](opencode.md)）。OpenCode 安装需翻墙时可加 `--proxy`。
 

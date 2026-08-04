@@ -24,6 +24,14 @@ git clone git@github.com:Kian-KONG/local-omlx.git
 cd local-omlx
 cp .env.example .env
 
+# 一键：检测/装 oMLX → 下模型 → 启动 → 检测/装 OpenCode → 写配置
+./scripts/bootstrap.sh
+
+# OpenCode 下载若需翻墙（可选）:
+# ./scripts/bootstrap.sh --proxy http://127.0.0.1:7890
+# 或在 .env 设 OPENCODE_PROXY=http://127.0.0.1:7890
+
+# 也可分步：
 # 推荐 DMG 安装 oMLX: https://github.com/jundot/omlx/releases
 ./scripts/download-models.sh hf-mirror mini16    # 4B + 9B
 ./scripts/download-models.sh hf-mirror 36-2bit   # Qwen3.6-35B 2bit（16GB）
@@ -55,10 +63,16 @@ Key: `ollama`
 ### OpenCode（推荐一键脚本）
 
 ```bash
-./scripts/setup-opencode.sh          # 写入 ~/.config/opencode + bing-cn + 轻量 skills
+./scripts/bootstrap.sh                 # 模型 + OpenCode 全流程
+./scripts/bootstrap.sh --check         # 只检测
+./scripts/setup-opencode.sh            # 仅配 OpenCode（缺则自动装）
 ./scripts/setup-opencode.sh --check
 # 可选：把 skills/AGENTS 拷到当前项目 .opencode/
 ./scripts/setup-opencode.sh --project
+
+# OpenCode 安装需翻墙时（可选）:
+./scripts/install-opencode.sh --proxy http://127.0.0.1:7890
+# 或: OPENCODE_PROXY=http://127.0.0.1:7890 ./scripts/bootstrap.sh
 ```
 
 - 对接 oMLX：`http://127.0.0.1:8000/v1`
@@ -70,7 +84,8 @@ Key: `ollama`
 
 | 位置 | 作用 |
 |------|------|
-| `scripts/download-models.sh` | Mac：hf-mirror 下 OptiQ |
+| `scripts/bootstrap.sh` | Mac：一键 oMLX + 模型 + OpenCode（代理可选） |
+| `scripts/install-opencode.sh` | 检测/安装 OpenCode（`--proxy` 可选翻墙） |
 | `scripts/setup-opencode.sh` | Mac：OpenCode → oMLX + bing-cn + 轻量 skills |
 | `scripts/install-omlx.sh` 等 | Mac：oMLX（更推荐 DMG） |
 | `scripts/windows/*.ps1` | Windows：Ollama + 9B |
