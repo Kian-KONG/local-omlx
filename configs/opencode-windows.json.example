@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "ollama/qwen3.5:9b",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama",
+      "options": {
+        "baseURL": "${OLLAMA_BASE_URL:-http://127.0.0.1:11434/v1}",
+        "apiKey": "${OLLAMA_API_KEY:-ollama}"
+      },
+      "models": {
+        "qwen3.5:9b": {
+          "name": "qwen3.5:9b",
+          "modalities": { "input": ["text"], "output": ["text"] },
+          "limit": { "context": 8192, "output": 2048 },
+          "tools": true
+        }
+      }
+    }
+  },
+  "mcp": {
+    "bing-cn": {
+      "type": "local",
+      "command": ["npx", "-y", "bing-cn-mcp"],
+      "enabled": true,
+      "timeout": 45000,
+      "environment": {
+        "NPM_CONFIG_REGISTRY": "https://registry.npmmirror.com"
+      }
+    }
+  },
+  "instructions": [
+    "For current events, versions, prices, docs, or anything that may be outside training data: you MUST call tool bing-cn_bing_search first (argument: query). Do not answer from memory alone. To read a page, call bing-cn_crawl_webpage. Cite URLs from tool results."
+  ]
+}
