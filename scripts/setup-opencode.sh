@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# 配置 OpenCode → oMLX，并接入必应中文联网搜索 MCP（bing-cn-mcp，免 API Key，墙内可用）
+# 配置 OpenCode → oMLX，并接入必应中文联网搜索 MCP + 本地轻量 skills
 #
 # 用法:
-#   ./scripts/setup-opencode.sh           # 写入 ~/.config/opencode/opencode.json
-#   ./scripts/setup-opencode.sh --check   # 只检查 MCP 状态
+#   ./scripts/setup-opencode.sh           # 写入 ~/.config/opencode
+#   ./scripts/setup-opencode.sh --check   # 只检查 MCP / skills 状态
 #   ./scripts/setup-opencode.sh --dry-run # 打印将写入的配置，不落盘
+#   ./scripts/setup-opencode.sh --project # 额外把 skills/AGENTS 拷到当前目录 .opencode/（项目复用）
 #
 set -euo pipefail
 
@@ -23,19 +24,23 @@ NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
 OPENCODE_DIR="${OPENCODE_CONFIG_DIR:-$HOME/.config/opencode}"
 OPENCODE_JSON="$OPENCODE_DIR/opencode.json"
 EXAMPLE="$ROOT_DIR/configs/opencode.json.example"
+TEMPLATE_DIR="$ROOT_DIR/configs/opencode"
 MODE="${1:-}"
+INSTALL_PROJECT=0
 
 usage() {
   cat <<EOF
-用法: $0 [--check|--dry-run|--help]
+用法: $0 [--check|--dry-run|--project|--help]
 
-  (无参数)   写入 OpenCode 配置（oMLX + bing-cn-mcp 必应中文搜索）
-  --check    检查 opencode / MCP 是否可用
-  --dry-run  打印配置 JSON，不写入
+  (无参数)    写入全局 ~/.config/opencode（oMLX + bing-cn + 轻量 skills）
+  --check     检查 opencode / MCP / skills
+  --dry-run   打印配置 JSON，不写入
+  --project   同时把 skills + AGENTS 拷到 \$PWD/.opencode/（供单仓复用）
 
 环境变量: OMLX_HOST OMLX_PORT OMLX_API_KEY OPENCODE_MODEL NPM_REGISTRY
 默认模型: $DEFAULT_MODEL
 目标文件: $OPENCODE_JSON
+模板目录: $TEMPLATE_DIR
 EOF
 }
 
@@ -69,6 +74,8 @@ for m in models.values():
 mcp = cfg.setdefault("mcp", {})
 # drop legacy DDG server if present in merged configs
 mcp.pop("web-search", None)
+if "ddg" in mcp and isinstance(mcp["ddg"], dict):
+    mcp["ddg"]["enabled"] = False
 bing = mcp.setdefault("bing-cn", {})
 bing["type"] = "local"
 bing["command"] = ["npx", "-y", "bing-cn-mcp"]
@@ -78,10 +85,24 @@ bing.setdefault("environment", {})["NPM_CONFIG_REGISTRY"] = npm_registry
 cfg["instructions"] = [
     "For current events, versions, prices, docs, or anything that may be outside training data: "
     "you MUST call tool bing-cn_bing_search first (argument: query). Do not answer from memory alone. "
-    "To read a page, call bing-cn_crawl_webpage. Cite URLs from tool results."
+    "To read a page, call bing-cn_crawl_webpage. Cite URLs from tool results. Prefer bing-cn over other search tools."
 ]
 print(json.dumps(cfg, indent=2, ensure_ascii=False))
 PY
+}
+
+install_templates() {
+  local dest="$1"
+  mkdir -p "$dest/skills" "$dest/agent"
+  cp "$TEMPLATE_DIR/AGENTS.md" "$dest/AGENTS.md"
+  # skills: sync known light skills
+  for skill in local-search local-coding; do
+    mkdir -p "$dest/skills/$skill"
+    cp "$TEMPLATE_DIR/skills/$skill/SKILL.md" "$dest/skills/$skill/SKILL.md"
+  done
+  # agent: substitute model placeholder
+  sed "s/__OPENCODE_MODEL__/${DEFAULT_MODEL}/g" \
+    "$TEMPLATE_DIR/agent/local.md.example" >"$dest/agent/local.md"
 }
 
 do_check() {
@@ -102,18 +123,27 @@ do_check() {
     opencode mcp list 2>&1 || true
   fi
   echo ""
+  echo "=== Skills ==="
+  if command -v opencode >/dev/null 2>&1; then
+    opencode debug skill 2>&1 | python3 -c 'import sys,json; d=json.load(sys.stdin); print([x.get("name") for x in d])' 2>/dev/null || true
+  fi
+  echo ""
   echo "配置文件: $OPENCODE_JSON"
   [[ -f "$OPENCODE_JSON" ]] && python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("model=",d.get("model")); print("mcp=",list((d.get("mcp") or {}).keys()))' "$OPENCODE_JSON"
+  echo "AGENTS: $OPENCODE_DIR/AGENTS.md"
+  echo "skills: $OPENCODE_DIR/skills/"
 }
 
 case "$MODE" in
   -h|--help|help) usage; exit 0 ;;
   --check) do_check; exit 0 ;;
+  --project) INSTALL_PROJECT=1; MODE="" ;;
 esac
 
 need_cmd python3
 need_cmd npx
 [[ -f "$EXAMPLE" ]] || { echo "缺少模板: $EXAMPLE" >&2; exit 1; }
+[[ -d "$TEMPLATE_DIR/skills" ]] || { echo "缺少模板目录: $TEMPLATE_DIR" >&2; exit 1; }
 
 # 预热 npm 缓存（国内镜像）
 if [[ "$MODE" != "--dry-run" ]]; then
@@ -126,6 +156,11 @@ CFG_JSON="$(build_config)"
 
 if [[ "$MODE" == "--dry-run" ]]; then
   echo "$CFG_JSON"
+  echo ""
+  echo "# would also install:"
+  echo "#   $OPENCODE_DIR/AGENTS.md"
+  echo "#   $OPENCODE_DIR/skills/{local-search,local-coding}/SKILL.md"
+  echo "#   $OPENCODE_DIR/agent/local.md  (model=omlx/$DEFAULT_MODEL)"
   exit 0
 fi
 
@@ -136,24 +171,24 @@ if [[ -f "$OPENCODE_JSON" ]]; then
 fi
 printf '%s\n' "$CFG_JSON" >"$OPENCODE_JSON"
 
-# AGENTS.md 强化小模型工具调用
-cat >"$OPENCODE_DIR/AGENTS.md" <<'EOF'
-# 联网搜索（必应中文 MCP）
+install_templates "$OPENCODE_DIR"
 
-涉及时效、版本号、新闻、价格、文档更新时：
-
-1. **先**调用 `bing-cn_bing_search`（参数 `query`），禁止只用训练记忆作答。
-2. 需要正文时再调用 `bing-cn_crawl_webpage`。
-3. 回答里引用工具返回的 URL；工具无结果时说明「搜索无结果」，不要编造。
-EOF
+if [[ "$INSTALL_PROJECT" -eq 1 ]]; then
+  PROJECT_OC="$PWD/.opencode"
+  install_templates "$PROJECT_OC"
+  echo "已写入项目: $PROJECT_OC"
+fi
 
 echo "已写入: $OPENCODE_JSON"
 echo "  baseURL: $BASE_URL"
 echo "  model:   omlx/$DEFAULT_MODEL"
 echo "  mcp:     bing-cn → npx -y bing-cn-mcp"
 echo "  agents:  $OPENCODE_DIR/AGENTS.md"
+echo "  skills:  local-search, local-coding"
+echo "  agent:   $OPENCODE_DIR/agent/local.md"
 echo ""
 echo "验证:"
 echo "  opencode mcp list"
+echo "  opencode debug skill"
 echo "  在 OpenCode 里问: 用 bing-cn_bing_search 搜一下 xxx"
 do_check || true

@@ -55,19 +55,22 @@ Key: `ollama`
 ### OpenCode（推荐一键脚本）
 
 ```bash
-./scripts/setup-opencode.sh          # 写入 ~/.config/opencode + 必应中文 bing-cn MCP
+./scripts/setup-opencode.sh          # 写入 ~/.config/opencode + bing-cn + 轻量 skills
 ./scripts/setup-opencode.sh --check
+# 可选：把 skills/AGENTS 拷到当前项目 .opencode/
+./scripts/setup-opencode.sh --project
 ```
 
 - 对接 oMLX：`http://127.0.0.1:8000/v1`
-- 联网搜索：必应中文 MCP（`bing-cn-mcp`）→ 工具 `bing-cn_bing_search` / `bing-cn_crawl_webpage`
-- 文档：[configs/opencode.md](configs/opencode.md) · 模板：[configs/opencode.json.example](configs/opencode.json.example)
+- 联网搜索：必应中文 MCP（`bing-cn-mcp`）→ `bing-cn_bing_search` / `bing-cn_crawl_webpage`
+- 轻量 skills：`local-search`、`local-coding`（适合本地模型，勿装大型 skill 包）
+- 文档：[configs/opencode.md](configs/opencode.md) · 模板：[configs/opencode/](configs/opencode/) · JSON：[configs/opencode.json.example](configs/opencode.json.example)
 
 ## 脚本一览
 
 | 位置 | 作用 |
 |------|------|
 | `scripts/download-models.sh` | Mac：hf-mirror 下 OptiQ |
-| `scripts/setup-opencode.sh` | Mac：OpenCode → oMLX + 必应中文联网搜索 |
+| `scripts/setup-opencode.sh` | Mac：OpenCode → oMLX + bing-cn + 轻量 skills |
 | `scripts/install-omlx.sh` 等 | Mac：oMLX（更推荐 DMG） |
 | `scripts/windows/*.ps1` | Windows：Ollama + 9B |

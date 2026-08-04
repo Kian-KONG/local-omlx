@@ -1,4 +1,4 @@
-# OpenCode ↔ oMLX + 必应中文联网搜索
+# OpenCode ↔ oMLX + 必应中文联网搜索 + 本地轻量 skills
 
 OpenCode 作为客户端，oMLX 作为本地 OpenAI 兼容后端；联网搜索用 **`bing-cn-mcp`**（`cn.bing.com`，免 API Key，墙内可用）。
 
@@ -11,12 +11,33 @@ cp -n .env.example .env   # 如尚未有 .env
 ./scripts/setup-opencode.sh --check
 ```
 
-会写入：
+会写入全局 `~/.config/opencode/`：
 
-1. `~/.config/opencode/opencode.json`（oMLX provider + `bing-cn` MCP）
-2. `~/.config/opencode/AGENTS.md`（强制时效问题先搜索）
+1. `opencode.json`（oMLX provider + `bing-cn` MCP）
+2. `AGENTS.md`（强制时效问题先搜索）
+3. `skills/local-search`、`skills/local-coding`（轻量、按需加载）
+4. `agent/local.md`（本地模型 agent，工具全开）
 
-模板见：[opencode.json.example](opencode.json.example)
+模板源目录：[opencode/](opencode/) · JSON 示例：[opencode.json.example](opencode.json.example)
+
+### 给某个项目单独复用
+
+在目标仓库根目录执行（skills / AGENTS 写入该仓 `.opencode/`）：
+
+```bash
+cd /path/to/your-project
+/path/to/local-omlx/scripts/setup-opencode.sh --project
+```
+
+或手动拷贝：
+
+```bash
+mkdir -p .opencode
+cp -R /path/to/local-omlx/configs/opencode/skills .opencode/
+cp /path/to/local-omlx/configs/opencode/AGENTS.md .opencode/
+```
+
+全局配置仍负责 provider / MCP；项目 skills 会与全局 skills 一并被 OpenCode 发现。
 
 ## 前置
 
@@ -45,9 +66,19 @@ cp -n .env.example .env   # 如尚未有 .env
 
 ```bash
 opencode mcp list   # 应显示 bing-cn connected
+opencode debug skill  # 应含 local-search / local-coding
 ```
 
 > 注意：靠爬取页面，过于频繁可能触发必应反爬。知乎 / 公众号等站点可能无法 crawl。
+
+## 轻量 skills（适合本地模型）
+
+| Skill | 何时用 |
+|-------|--------|
+| `local-search` | 时效 / 版本 / 文档 → 强制走 bing-cn |
+| `local-coding` | 改代码 → grep 先、小 diff、少读文件 |
+
+**不要**装大型 skill 合集（superpowers、上千条 catalog）：描述列表会撑爆本地模型 prefill。
 
 ## 模型建议（16GB）
 
@@ -58,6 +89,10 @@ opencode mcp list   # 应显示 bing-cn connected
 | 实验 2bit | `Qwen3.6-35B-A3B-RotorQuant-MLX-2bit` | 约 8k，质量差 |
 
 切换 oMLX 侧模型：`./scripts/switch-model.sh 4b`
+
+## Windows（Ollama）
+
+模板：[opencode-windows.json.example](opencode-windows.json.example)（`qwen3.5:9b` + bing-cn）。skills / AGENTS 仍可从 `configs/opencode/` 拷到 Windows 的 OpenCode 配置目录。
 
 ## 可选：阿里云百炼 / 博查（更稳，需 Key）
 
