@@ -62,6 +62,7 @@ copaw app
 |------|----------|
 | CoPaw Agent / 工具调用（推荐） | `Qwen3.5-4B-OptiQ-4bit` |
 | 轻量聊天（关掉其他重进程） | `Qwen3.5-9B-OptiQ-4bit` |
+| 空机重活（2bit，关掉 CoPaw） | `Qwen3.6-35B-A3B-RotorQuant-MLX-2bit` |
 
 5. LLM Configuration 下拉框选中当前要用的模型并激活。
 
@@ -71,9 +72,10 @@ copaw app
 
 | 你在做什么 | 用哪个模型 | 额外动作 |
 |------------|------------|----------|
-| CoPaw 多轮 agent | **4B** | `./scripts/switch-model.sh 4b`；Admin 里 Unload 9B |
-| 单独问答 / 写短文 | **9B** | 先退出 CoPaw；Unload 4B |
-| 同时开 userbank-rag / Docker | **4B** | 不要 pin 9B |
+| CoPaw 多轮 agent | **4B** | `./scripts/switch-model.sh 4b`；Admin 里 Unload 其他 |
+| 单独问答 / 写短文 | **9B** | 先退出 CoPaw；Unload 其他 |
+| 空机重活（质量可接受即可） | **Qwen3.6 2bit** | `./scripts/switch-model.sh 36-2bit`；关掉 CoPaw |
+| 同时开 userbank-rag / Docker | **4B** | 不要 pin 9B / 36-2bit |
 
 oMLX 内存护栏默认约 `OMLX_MEMORY_GUARD_GB=10`。不要同时 Pin 9B 与 4B。
 

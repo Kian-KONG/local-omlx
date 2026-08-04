@@ -104,9 +104,14 @@ nohup omlx "${ARGS[@]}" >>"$LOG_FILE" 2>&1 &
 echo $! >"$PID_FILE"
 echo "已后台启动 PID $(cat "$PID_FILE")"
 
+auth_hdr=()
+if [[ -n "${OMLX_API_KEY:-}" ]]; then
+  auth_hdr=(-H "Authorization: Bearer ${OMLX_API_KEY}")
+fi
+
 # 等待就绪（首次加载可能较慢）
 for _ in $(seq 1 90); do
-  if curl -fsS "http://${HOST}:${PORT}/v1/models" >/dev/null 2>&1; then
+  if curl -fsS "${auth_hdr[@]}" "http://${HOST}:${PORT}/v1/models" >/dev/null 2>&1; then
     echo "就绪: http://${HOST}:${PORT}/v1/models"
     echo "Admin: http://${HOST}:${PORT}/admin"
     exit 0

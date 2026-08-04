@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# 下载 Qwen3.5 OptiQ MLX 模型到 oMLX 模型目录（默认同 DMG：~/.omlx/models）
+# 下载 Qwen OptiQ / 量化 MLX 模型到 oMLX 模型目录（默认同 DMG：~/.omlx/models）
 #
 # 用法:
 #   ./scripts/download-models.sh [hf-mirror|modelscope] [profile|size]
 #
 # profile/size:
 #   mini16 | both     → 4B + 9B（16GB Mac Mini）
-#   pro36             → 4B + 9B + 35B-A3B（36GB+，如 M3 Pro）
-#   4b | 9b | 35b     → 单个模型
+#   36-2bit | qwen36  → Qwen3.6-35B-A3B 2bit（约 11GB，16GB 可跑）
+#   pro36             → 4B + 9B + Qwen3.5-35B-A3B OptiQ-4bit（36GB+）
+#   4b | 9b | 35b | 36-2bit → 单个模型
 #
 # 也可只在 oMLX Admin 里下载；本脚本便于多机复用与国内镜像。
 set -euo pipefail
@@ -27,20 +28,24 @@ VENV_DIR="${OMLX_DOWNLOAD_VENV:-$ROOT_DIR/.venv-download}"
 MODEL_9B="${OMLX_MODEL_9B:-mlx-community/Qwen3.5-9B-OptiQ-4bit}"
 MODEL_4B="${OMLX_MODEL_4B:-mlx-community/Qwen3.5-4B-OptiQ-4bit}"
 MODEL_35B="${OMLX_MODEL_35B:-mlx-community/Qwen3.5-35B-A3B-OptiQ-4bit}"
+# Qwen3.6-35B-A3B 最小量化（~11GB），16GB Mac 可选
+MODEL_36_2BIT="${OMLX_MODEL_36_2BIT:-majentik/Qwen3.6-35B-A3B-RotorQuant-MLX-2bit}"
 
 MS_9B="${OMLX_MODELSCOPE_9B:-$MODEL_9B}"
 MS_4B="${OMLX_MODELSCOPE_4B:-$MODEL_4B}"
 MS_35B="${OMLX_MODELSCOPE_35B:-$MODEL_35B}"
+MS_36_2BIT="${OMLX_MODELSCOPE_36_2BIT:-$MODEL_36_2BIT}"
 
 mkdir -p "$MODEL_DIR"
 
 usage() {
   cat <<EOF
-用法: $0 [hf-mirror|modelscope] [mini16|pro36|both|4b|9b|35b]
+用法: $0 [hf-mirror|modelscope] [mini16|pro36|both|4b|9b|35b|36-2bit|qwen36]
 
   mini16 / both  4B + 9B（约 12GB 盘，适合 16GB）
-  pro36          4B + 9B + 35B-A3B（约 33GB 盘，适合 36GB+）
-  4b | 9b | 35b  只下对应模型
+  36-2bit / qwen36  Qwen3.6-35B-A3B 2bit（约 11GB，16GB 可跑）
+  pro36          4B + 9B + Qwen3.5-35B OptiQ-4bit（约 33GB 盘，适合 36GB+）
+  4b | 9b | 35b | 36-2bit  只下对应模型
   Ctrl+C          优雅暂停（保留断点，再次运行同一命令即可续传）
 
 环境变量: OMLX_MODEL_DIR HF_ENDPOINT PIP_INDEX_URL
@@ -130,6 +135,10 @@ is_downloaded() {
   local dir="$1"
   [[ -d "$dir" ]] || return 1
   [[ -f "$dir/config.json" ]] || return 1
+  # 仍有未完成分片则视为未下载完
+  if find "$dir" -name '*.incomplete' 2>/dev/null | grep -q .; then
+    return 1
+  fi
 
   local index="$dir/model.safetensors.index.json"
   if [[ -f "$index" ]]; then
@@ -255,6 +264,9 @@ case "$WHICH" in
   4b|4B) download_one "$MODEL_4B" "$MS_4B" ;;
   9b|9B) download_one "$MODEL_9B" "$MS_9B" ;;
   35b|35B|35b-a3b|35B-A3B) download_one "$MODEL_35B" "$MS_35B" ;;
+  36-2bit|36_2bit|qwen36|qwen3.6|Qwen36)
+    download_one "$MODEL_36_2BIT" "$MS_36_2BIT"
+    ;;
   -h|--help|help) usage; exit 0 ;;
   *)
     usage >&2

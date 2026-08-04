@@ -11,13 +11,19 @@ fi
 HOST="${OMLX_HOST:-127.0.0.1}"
 PORT="${OMLX_PORT:-8000}"
 BASE="http://${HOST}:${PORT}"
-TARGET="${1:-}" # 9b | 4b | 35b | status | ""
+TARGET="${1:-}" # 9b | 4b | 35b | 36-2bit | status | ""
 
 MODEL_9B_NAME="Qwen3.5-9B-OptiQ-4bit"
 MODEL_4B_NAME="Qwen3.5-4B-OptiQ-4bit"
 MODEL_35B_NAME="Qwen3.5-35B-A3B-OptiQ-4bit"
+MODEL_36_2BIT_NAME="Qwen3.6-35B-A3B-RotorQuant-MLX-2bit"
 
-if ! curl -fsS "$BASE/v1/models" >/dev/null 2>&1; then
+auth_hdr=()
+if [[ -n "${OMLX_API_KEY:-}" ]]; then
+  auth_hdr=(-H "Authorization: Bearer ${OMLX_API_KEY}")
+fi
+
+if ! curl -fsS "${auth_hdr[@]}" "$BASE/v1/models" >/dev/null 2>&1; then
   echo "oMLX 未就绪: $BASE/v1/models" >&2
   echo "请先: ./scripts/start.sh" >&2
   exit 1
@@ -25,15 +31,15 @@ fi
 
 echo "=== 可用模型 ($BASE/v1/models) ==="
 if command -v python3 >/dev/null 2>&1; then
-  curl -fsS "$BASE/v1/models" | python3 -c '
+  curl -fsS "${auth_hdr[@]}" "$BASE/v1/models" | python3 -c '
 import json,sys
 data=json.load(sys.stdin)
 for m in data.get("data", data if isinstance(data, list) else []):
     mid = m.get("id") if isinstance(m, dict) else m
     print("-", mid)
-' 2>/dev/null || curl -fsS "$BASE/v1/models"
+' 2>/dev/null || curl -fsS "${auth_hdr[@]}" "$BASE/v1/models"
 else
-  curl -fsS "$BASE/v1/models"
+  curl -fsS "${auth_hdr[@]}" "$BASE/v1/models"
 fi
 echo ""
 
@@ -45,7 +51,7 @@ try_admin_unload() {
     "/admin/api/models/${name}/unload" \
     "/api/models/${name}/unload" \
     "/v1/models/${name}/unload"; do
-    if curl -fsS -X POST "$BASE$path" >/dev/null 2>&1; then
+    if curl -fsS "${auth_hdr[@]}" -X POST "$BASE$path" >/dev/null 2>&1; then
       echo "已请求卸载: $name ($path)"
       return 0
     fi
@@ -62,7 +68,8 @@ oMLX 按请求里的 model 字段加载；同时只保留一个大模型在内�
 推荐 model id:
   4B（CoPaw / Codex / 多进程）: $MODEL_4B_NAME
   9B（16GB 空机 / 36GB Agent）: $MODEL_9B_NAME
-  35B-A3B（仅 36GB+ 空机）: $MODEL_35B_NAME
+  Qwen3.6-35B 2bit（16GB 空机重活）: $MODEL_36_2BIT_NAME
+  Qwen3.5-35B OptiQ-4bit（仅 36GB+ 空机）: $MODEL_35B_NAME
 
 OpenAI 示例:
   curl -s $BASE/v1/chat/completions \\
@@ -77,11 +84,6 @@ Admin: $BASE/admin → Models → Unload 不用的模型
 EOF
 }
 
-auth_hdr=()
-if [[ -n "${OMLX_API_KEY:-}" ]]; then
-  auth_hdr=(-H "Authorization: Bearer ${OMLX_API_KEY}")
-fi
-
 case "$TARGET" in
   ""|status)
     print_client_hint "$MODEL_4B_NAME"
@@ -90,6 +92,7 @@ case "$TARGET" in
     echo "目标: 4B（适合 CoPaw / Codex）"
     try_admin_unload "$MODEL_9B_NAME" || true
     try_admin_unload "$MODEL_35B_NAME" || true
+    try_admin_unload "$MODEL_36_2BIT_NAME" || true
     print_client_hint "$MODEL_4B_NAME"
     echo ""
     echo "冒烟测试 4B ..."
@@ -104,6 +107,7 @@ case "$TARGET" in
     echo "目标: 9B（Unload 其他大模型）"
     try_admin_unload "$MODEL_4B_NAME" || true
     try_admin_unload "$MODEL_35B_NAME" || true
+    try_admin_unload "$MODEL_36_2BIT_NAME" || true
     print_client_hint "$MODEL_9B_NAME"
     echo ""
     echo "冒烟测试 9B ..."
@@ -115,9 +119,10 @@ case "$TARGET" in
     echo ""
     ;;
   35b|35B)
-    echo "目标: 35B-A3B（需 36GB+，Unload 其他模型，少开 CoPaw）"
+    echo "目标: Qwen3.5-35B OptiQ-4bit（需 36GB+，Unload 其他模型，少开 CoPaw）"
     try_admin_unload "$MODEL_4B_NAME" || true
     try_admin_unload "$MODEL_9B_NAME" || true
+    try_admin_unload "$MODEL_36_2BIT_NAME" || true
     print_client_hint "$MODEL_35B_NAME"
     echo ""
     echo "冒烟测试 35B ..."
@@ -128,8 +133,23 @@ case "$TARGET" in
       | head -c 800 || true
     echo ""
     ;;
+  36-2bit|36_2bit|qwen36|qwen3.6|Qwen36)
+    echo "目标: Qwen3.6-35B 2bit（16GB 空机重活，Unload 其他模型，关掉 CoPaw）"
+    try_admin_unload "$MODEL_4B_NAME" || true
+    try_admin_unload "$MODEL_9B_NAME" || true
+    try_admin_unload "$MODEL_35B_NAME" || true
+    print_client_hint "$MODEL_36_2BIT_NAME"
+    echo ""
+    echo "冒烟测试 Qwen3.6-35B 2bit ..."
+    curl -fsS "$BASE/v1/chat/completions" \
+      "${auth_hdr[@]}" \
+      -H 'Content-Type: application/json' \
+      -d "{\"model\":\"$MODEL_36_2BIT_NAME\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with OK\"}],\"max_tokens\":16}" \
+      | head -c 800 || true
+    echo ""
+    ;;
   *)
-    echo "用法: $0 [status|4b|9b|35b]" >&2
+    echo "用法: $0 [status|4b|9b|35b|36-2bit]" >&2
     exit 1
     ;;
 esac
