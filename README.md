@@ -79,7 +79,7 @@ Key: `ollama`
 ```
 
 - 对接 oMLX：`http://127.0.0.1:8000/v1`
-- 联网搜索：必应中文 MCP（`@ai-mooncake/mcp-server-bingcn`）→ `bing-cn_bing_search` / `bing-cn_crawl_webpage`
+- 联网搜索：必应中文 MCP（`bing-cn-mcp`）→ `bing-cn_bing_search` / `bing-cn_crawl_webpage`
 - 轻量 skills：`local-search`、`local-coding`、`local-verify`（适合本地模型，勿装大型 skill 包）
 - 文档：[configs/opencode.md](configs/opencode.md) · 模板：[configs/opencode/](configs/opencode/) · JSON：[configs/opencode.json.example](configs/opencode.json.example)
 

@@ -110,7 +110,7 @@ if "ddg" in mcp and isinstance(mcp["ddg"], dict):
     mcp["ddg"]["enabled"] = False
 bing = mcp.setdefault("bing-cn", {})
 bing["type"] = "local"
-bing["command"] = ["npx", "-y", "@ai-mooncake/mcp-server-bingcn"]
+bing["command"] = ["npx", "-y", "bing-cn-mcp"]
 bing["enabled"] = True
 bing["timeout"] = 45000
 bing.setdefault("environment", {})["NPM_CONFIG_REGISTRY"] = npm_registry
@@ -145,7 +145,7 @@ do_check() {
   fi
   echo ""
   echo "=== Bing MCP（仅本地配置，不联网检查） ==="
-  echo "包: @ai-mooncake/mcp-server-bingcn"
+  echo "包: bing-cn-mcp"
   echo "安装: ./scripts/install-online.sh --bingcn"
   echo ""
   echo "=== MCP list ==="
@@ -203,7 +203,7 @@ fi
 echo "已写入: $OPENCODE_JSON"
 echo "  baseURL: $BASE_URL"
 echo "  model:   omlx/$DEFAULT_MODEL"
-echo "  mcp:     bing-cn → npx -y @ai-mooncake/mcp-server-bingcn（需另行安装）"
+echo "  mcp:     bing-cn → npx -y bing-cn-mcp（需另行安装）"
 echo "  agents:  $OPENCODE_DIR/AGENTS.md"
 echo "  skills:  local-search, local-coding, local-verify"
 echo "  agent:   $OPENCODE_DIR/agent/local.md"

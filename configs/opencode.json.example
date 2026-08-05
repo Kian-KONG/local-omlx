@@ -34,7 +34,7 @@
   "mcp": {
     "bing-cn": {
       "type": "local",
-      "command": ["npx", "-y", "@ai-mooncake/mcp-server-bingcn"],
+      "command": ["npx", "-y", "bing-cn-mcp"],
       "enabled": true,
       "timeout": 45000,
       "environment": {

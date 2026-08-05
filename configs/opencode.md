@@ -1,6 +1,6 @@
 # OpenCode ↔ oMLX + 必应中文联网搜索 + 本地轻量 skills
 
-OpenCode 作为客户端，oMLX 作为本地 OpenAI 兼容后端；联网搜索用 **`@ai-mooncake/mcp-server-bingcn`**（`cn.bing.com`，免 API Key，墙内可用）。
+OpenCode 作为客户端，oMLX 作为本地 OpenAI 兼容后端；联网搜索用 **`bing-cn-mcp`**（`cn.bing.com`，免 API Key，墙内可用）。
 
 ## 配置与安装
 

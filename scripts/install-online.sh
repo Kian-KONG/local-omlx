@@ -5,7 +5,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
-BING_PACKAGE="@ai-mooncake/mcp-server-bingcn"
+BING_PACKAGE="bing-cn-mcp"
 INSTALL_OPENCODE=1
 INSTALL_BINGCN=1
 
@@ -44,9 +44,9 @@ fi
 
 if [[ "$INSTALL_BINGCN" -eq 1 ]]; then
   command -v npx >/dev/null 2>&1 || { echo "缺少 npx，请先安装 Node.js。" >&2; exit 1; }
-  echo "预热 $BING_PACKAGE（registry=$NPM_REGISTRY）..."
+  echo "预热 ${BING_PACKAGE} (registry=${NPM_REGISTRY})..."
   NPM_CONFIG_REGISTRY="$NPM_REGISTRY" npx -y "$BING_PACKAGE" --help >/dev/null
-  echo "Bing MCP 已进入 npx 缓存；配置仍使用 npx -y $BING_PACKAGE。"
+  echo "Bing MCP 已进入 npx 缓存；配置仍使用 npx -y ${BING_PACKAGE}。"
 fi
 
 "$ROOT_DIR/scripts/setup-opencode.sh" --check
