@@ -60,7 +60,7 @@ OPENCODE_MODEL=Qwen3.5-4B-OptiQ-4bit
 
 1. **日常默认只用 4B**：OpenCode / CoPaw 同开最稳；要质量再空机切 9B。
 2. **同时只加载一个大模型**：`./scripts/switch-model.sh 4b|9b|36-2bit`。
-3. **联网搜索用必应中文**：`bing-cn-mcp`（`cn.bing.com`），墙内免 Key；DuckDuckGo 常空结果，勿默认。
+3. **联网搜索用必应中文**：`@ai-mooncake/mcp-server-bingcn`（`cn.bing.com`），墙内免 Key；DuckDuckGo 常空结果，勿默认。
 4. **小模型常跳过工具**：时效问题要明示「先 `bing-cn_bing_search`」；`AGENTS.md` + 轻量 skills（`local-search` / `local-coding`）+ `tools: true` 已写入 setup 脚本。勿装大型 skill 合集。
 5. **Qwen3.6 2bit 仅实验**：约 8k 上下文，需抬高 memory guard / 关 `prefill_memory_guard`；质量远弱于 4bit。
 6. **勿下 3.6 的 4bit（~20GB）**：16GB 跑不动。

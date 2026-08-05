@@ -2,12 +2,11 @@
 # 配置 OpenCode → oMLX，并接入必应中文联网搜索 MCP + 本地轻量 skills
 #
 # 用法:
-#   ./scripts/setup-opencode.sh              # 检测/安装 OpenCode + 写入配置
+#   ./scripts/setup-opencode.sh              # 离线写入 OpenCode 配置和本地 skills
 #   ./scripts/setup-opencode.sh --check      # 只检查 MCP / skills 状态
 #   ./scripts/setup-opencode.sh --dry-run    # 打印将写入的配置，不落盘
 #   ./scripts/setup-opencode.sh --project    # 额外把 skills/AGENTS 拷到当前目录 .opencode/
-#   ./scripts/setup-opencode.sh --proxy URL  # 安装 OpenCode 时走代理（翻墙可选）
-#   ./scripts/setup-opencode.sh --skip-install  # 不自动装 OpenCode
+#   ./scripts/setup-opencode.sh --skip-install  # 兼容旧参数（当前始终不下载）
 #
 set -euo pipefail
 
@@ -36,12 +35,12 @@ usage() {
   cat <<EOF
 用法: $0 [选项]
 
-  (无参数)         检测/安装 OpenCode，写入全局 ~/.config/opencode
+  (无参数)         离线写入全局 ~/.config/opencode
   --check          检查 opencode / MCP / skills
   --dry-run        打印配置 JSON，不写入
   --project        同时把 skills + AGENTS 拷到 \$PWD/.opencode/
-  --proxy URL      安装 OpenCode 时使用代理（可选翻墙）
-  --skip-install   不自动下载 OpenCode（未装则仅警告）
+  --proxy URL      兼容旧参数；不再触发下载
+  --skip-install   兼容旧参数；setup 当前始终不下载
 
 环境变量: OMLX_HOST OMLX_PORT OMLX_API_KEY OPENCODE_MODEL NPM_REGISTRY OPENCODE_PROXY
 默认模型: $DEFAULT_MODEL
@@ -84,22 +83,6 @@ ensure_opencode_path() {
   fi
 }
 
-ensure_opencode_installed() {
-  ensure_opencode_path
-  if command -v opencode >/dev/null 2>&1; then
-    return 0
-  fi
-  if [[ "$SKIP_INSTALL" -eq 1 ]]; then
-    echo "未找到 opencode，且指定了 --skip-install。" >&2
-    return 1
-  fi
-  echo "未找到 OpenCode，尝试安装（下载可能需翻墙）..."
-  local args=()
-  [[ -n "$PROXY" ]] && args+=(--proxy "$PROXY")
-  "$ROOT_DIR/scripts/install-opencode.sh" "${args[@]+"${args[@]}"}"
-  ensure_opencode_path
-}
-
 build_config() {
   python3 - "$EXAMPLE" "$BASE_URL" "$API_KEY" "$DEFAULT_MODEL" "$NPM_REGISTRY" <<'PY'
 import json, sys
@@ -127,7 +110,7 @@ if "ddg" in mcp and isinstance(mcp["ddg"], dict):
     mcp["ddg"]["enabled"] = False
 bing = mcp.setdefault("bing-cn", {})
 bing["type"] = "local"
-bing["command"] = ["npx", "-y", "bing-cn-mcp"]
+bing["command"] = ["npx", "-y", "@ai-mooncake/mcp-server-bingcn"]
 bing["enabled"] = True
 bing["timeout"] = 45000
 bing.setdefault("environment", {})["NPM_CONFIG_REGISTRY"] = npm_registry
@@ -144,7 +127,7 @@ install_templates() {
   local dest="$1"
   mkdir -p "$dest/skills" "$dest/agent"
   cp "$TEMPLATE_DIR/AGENTS.md" "$dest/AGENTS.md"
-  for skill in local-search local-coding; do
+  for skill in local-search local-coding local-verify; do
     mkdir -p "$dest/skills/$skill"
     cp "$TEMPLATE_DIR/skills/$skill/SKILL.md" "$dest/skills/$skill/SKILL.md"
   done
@@ -161,9 +144,9 @@ do_check() {
     echo "未找到 opencode（可: ./scripts/install-opencode.sh [--proxy URL]）" >&2
   fi
   echo ""
-  echo "=== npx / bing-cn-mcp ==="
-  need_cmd npx
-  NPM_CONFIG_REGISTRY="$NPM_REGISTRY" npm view bing-cn-mcp version name 2>&1 | head -5 || true
+  echo "=== Bing MCP（仅本地配置，不联网检查） ==="
+  echo "包: @ai-mooncake/mcp-server-bingcn"
+  echo "安装: ./scripts/install-online.sh --bingcn"
   echo ""
   echo "=== MCP list ==="
   if command -v opencode >/dev/null 2>&1; then
@@ -187,19 +170,8 @@ if [[ "$MODE" == "check" ]]; then
 fi
 
 need_cmd python3
-need_cmd npx
 [[ -f "$EXAMPLE" ]] || { echo "缺少模板: $EXAMPLE" >&2; exit 1; }
 [[ -d "$TEMPLATE_DIR/skills" ]] || { echo "缺少模板目录: $TEMPLATE_DIR" >&2; exit 1; }
-
-if [[ "$MODE" != "dry-run" ]]; then
-  ensure_opencode_installed || echo "继续写入配置；装好 OpenCode 后重开终端即可用。" >&2
-fi
-
-if [[ "$MODE" != "dry-run" ]]; then
-  echo "预取 bing-cn-mcp（registry=$NPM_REGISTRY）..."
-  NPM_CONFIG_REGISTRY="$NPM_REGISTRY" npm pack bing-cn-mcp --silent >/dev/null 2>&1 || \
-    NPM_CONFIG_REGISTRY="$NPM_REGISTRY" npx -y bing-cn-mcp --help >/dev/null 2>&1 || true
-fi
 
 CFG_JSON="$(build_config)"
 
@@ -208,7 +180,7 @@ if [[ "$MODE" == "dry-run" ]]; then
   echo ""
   echo "# would also install:"
   echo "#   $OPENCODE_DIR/AGENTS.md"
-  echo "#   $OPENCODE_DIR/skills/{local-search,local-coding}/SKILL.md"
+  echo "#   $OPENCODE_DIR/skills/{local-search,local-coding,local-verify}/SKILL.md"
   echo "#   $OPENCODE_DIR/agent/local.md  (model=omlx/$DEFAULT_MODEL)"
   exit 0
 fi
@@ -231,13 +203,13 @@ fi
 echo "已写入: $OPENCODE_JSON"
 echo "  baseURL: $BASE_URL"
 echo "  model:   omlx/$DEFAULT_MODEL"
-echo "  mcp:     bing-cn → npx -y bing-cn-mcp"
+echo "  mcp:     bing-cn → npx -y @ai-mooncake/mcp-server-bingcn（需另行安装）"
 echo "  agents:  $OPENCODE_DIR/AGENTS.md"
-echo "  skills:  local-search, local-coding"
+echo "  skills:  local-search, local-coding, local-verify"
 echo "  agent:   $OPENCODE_DIR/agent/local.md"
 echo ""
 echo "验证:"
 echo "  opencode mcp list"
 echo "  opencode debug skill"
-echo "  在 OpenCode 里问: 用 bing-cn_bing_search 搜一下 xxx"
+echo "  Bing MCP 安装后再验证: 用 bing-cn_bing_search 搜一下 xxx"
 do_check || true

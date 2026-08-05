@@ -1,8 +1,8 @@
 # OpenCode ↔ oMLX + 必应中文联网搜索 + 本地轻量 skills
 
-OpenCode 作为客户端，oMLX 作为本地 OpenAI 兼容后端；联网搜索用 **`bing-cn-mcp`**（`cn.bing.com`，免 API Key，墙内可用）。
+OpenCode 作为客户端，oMLX 作为本地 OpenAI 兼容后端；联网搜索用 **`@ai-mooncake/mcp-server-bingcn`**（`cn.bing.com`，免 API Key，墙内可用）。
 
-## 一键配置
+## 配置与安装
 
 ```bash
 cd /path/to/local-omlx
@@ -16,16 +16,19 @@ cp -n .env.example .env   # 如尚未有 .env
 ./scripts/bootstrap.sh --proxy http://127.0.0.1:7890
 # 或在 .env: OPENCODE_PROXY=http://127.0.0.1:7890
 
-# 仅配置 OpenCode（缺则自动装）
+# 离线写入配置、AGENTS 和轻量 skills；不会访问网络
 ./scripts/setup-opencode.sh
 ./scripts/setup-opencode.sh --check
+
+# 有网络时再执行，集中安装 OpenCode 并预热 Bing MCP
+./scripts/install-online.sh
 ```
 
 会写入全局 `~/.config/opencode/`：
 
 1. `opencode.json`（oMLX provider + `bing-cn` MCP）
 2. `AGENTS.md`（强制时效问题先搜索）
-3. `skills/local-search`、`skills/local-coding`（轻量、按需加载）
+3. `skills/local-search`、`skills/local-coding`、`skills/local-verify`（轻量、按需加载）
 4. `agent/local.md`（本地模型 agent，工具全开）
 
 模板源目录：[opencode/](opencode/) · JSON 示例：[opencode.json.example](opencode.json.example)
@@ -64,7 +67,7 @@ cp /path/to/local-omlx/configs/opencode/AGENTS.md .opencode/
 
 - oMLX 已启动：`./scripts/start.sh`（或 `./scripts/bootstrap.sh`）
 - 推荐模型：`Qwen3.5-4B-OptiQ-4bit`（流畅默认）；空机可用 9B
-- OpenCode：脚本会检测，缺失则安装；也可手动 `./scripts/install-opencode.sh`
+- OpenCode：setup 只检测，不安装；有网络时执行 `./scripts/install-online.sh`
 - 能访问 `cn.bing.com`（搜索 MCP，国内一般无需翻墙）；**安装 OpenCode 二进制**若失败再开可选代理
 
 ## 环境变量（可选，来自 `.env`）
@@ -76,7 +79,7 @@ cp /path/to/local-omlx/configs/opencode/AGENTS.md .opencode/
 | `OPENCODE_MODEL` | `Qwen3.5-4B-OptiQ-4bit` | 默认模型 id（不含 `omlx/` 前缀） |
 | `NPM_REGISTRY` | `https://registry.npmmirror.com` | 国内装 MCP |
 | `OPENCODE_PROXY` | （空） | 仅安装 OpenCode 时可选代理 |
-| `OPENCODE_INSTALL` | `1` | 设 `0` 禁止自动安装 OpenCode |
+| `OPENCODE_INSTALL` | `1` | 仅供独立安装脚本使用；setup 不会自动下载 |
 
 ## 联网搜索工具
 
@@ -101,7 +104,7 @@ opencode debug skill  # 应含 local-search / local-coding
 | `local-search` | 时效 / 版本 / 文档 → 强制走 bing-cn |
 | `local-coding` | 改代码 → grep 先、小 diff、少读文件 |
 
-**不要**装大型 skill 合集（superpowers、上千条 catalog）：描述列表会撑爆本地模型 prefill。
+**不要**装大型 skill 合集（superpowers、上千条 catalog）：描述列表会撑爆本地模型 prefill。对约 100k 上下文的本地模型，优先使用仓库自带的两个短 skill；MCP 只启用搜索，不要同时挂 GitHub、浏览器自动化、数据库等常驻服务。
 
 ## 模型建议（16GB）
 

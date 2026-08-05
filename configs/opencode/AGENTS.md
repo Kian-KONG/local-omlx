@@ -10,4 +10,4 @@
 
 - 少读文件、小 diff、短回答；不要一次挂整仓。
 - 优先 `grep` / `glob` 定位，再 `read` 相关片段。
-- 不要加载大型 skill 合集；只用已安装的短 skill（`local-search`、`local-coding`）。
+- 不要加载大型 skill 合集；只用已安装的短 skill（`local-search`、`local-coding`、`local-verify`）。

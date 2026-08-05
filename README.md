@@ -65,10 +65,13 @@ Key: `ollama`
 ```bash
 ./scripts/bootstrap.sh                 # 模型 + OpenCode 全流程
 ./scripts/bootstrap.sh --check         # 只检测
-./scripts/setup-opencode.sh            # 仅配 OpenCode（缺则自动装）
+./scripts/setup-opencode.sh            # 离线写入 OpenCode 配置和 skills
 ./scripts/setup-opencode.sh --check
 # 可选：把 skills/AGENTS 拷到当前项目 .opencode/
 ./scripts/setup-opencode.sh --project
+
+# 有网络时再执行：集中安装 OpenCode 和 Bing MCP
+./scripts/install-online.sh
 
 # OpenCode 安装需翻墙时（可选）:
 ./scripts/install-opencode.sh --proxy http://127.0.0.1:7890
@@ -76,8 +79,8 @@ Key: `ollama`
 ```
 
 - 对接 oMLX：`http://127.0.0.1:8000/v1`
-- 联网搜索：必应中文 MCP（`bing-cn-mcp`）→ `bing-cn_bing_search` / `bing-cn_crawl_webpage`
-- 轻量 skills：`local-search`、`local-coding`（适合本地模型，勿装大型 skill 包）
+- 联网搜索：必应中文 MCP（`@ai-mooncake/mcp-server-bingcn`）→ `bing-cn_bing_search` / `bing-cn_crawl_webpage`
+- 轻量 skills：`local-search`、`local-coding`、`local-verify`（适合本地模型，勿装大型 skill 包）
 - 文档：[configs/opencode.md](configs/opencode.md) · 模板：[configs/opencode/](configs/opencode/) · JSON：[configs/opencode.json.example](configs/opencode.json.example)
 
 ## 脚本一览
@@ -86,6 +89,7 @@ Key: `ollama`
 |------|------|
 | `scripts/bootstrap.sh` | Mac：一键 oMLX + 模型 + OpenCode（代理可选） |
 | `scripts/install-opencode.sh` | 检测/安装 OpenCode（`--proxy` 可选翻墙） |
-| `scripts/setup-opencode.sh` | Mac：OpenCode → oMLX + bing-cn + 轻量 skills |
+| `scripts/install-online.sh` | 有网络时集中安装 OpenCode 与 Bing MCP |
+| `scripts/setup-opencode.sh` | Mac：离线写入 OpenCode → oMLX + bing-cn + 轻量 skills |
 | `scripts/install-omlx.sh` 等 | Mac：oMLX（更推荐 DMG） |
 | `scripts/windows/*.ps1` | Windows：Ollama + 9B |
